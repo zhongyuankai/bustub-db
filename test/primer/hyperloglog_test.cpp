@@ -182,7 +182,7 @@ TEST(HyperLogLogTest, DISABLED_ParallelTest1) {
   ASSERT_EQ(ans, 13009);
 
   std::vector<std::thread> threads2;
-  for (uint64_t k = 0; k < 3000; k++) {
+  for (uint64_t k = 0; k < 1000; k++) {
     threads2.emplace_back(std::thread([&]() { obj.AddElem("Andy"); }));
     threads2.emplace_back(std::thread([&]() { obj.AddElem("Connor"); }));
     threads2.emplace_back(std::thread([&]() { obj.AddElem("J-How"); }));

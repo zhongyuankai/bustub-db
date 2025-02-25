@@ -82,6 +82,15 @@ class HyperLogLogPresto {
     return 0;
   }
 
+  auto MergeBucketNumOfIndex(uint16_t idx) -> uint8_t {
+    uint8_t bucket_num = dense_bucket_[idx].to_ulong();
+    auto it = overflow_bucket_.find(idx);
+    if (it != overflow_bucket_.end()) {
+      bucket_num = (it->second.to_ulong() << OVERFLOW_BUCKET_SIZE) | bucket_num;
+    }
+    return bucket_num;
+  }
+
   /** @brief Structure holding dense buckets (or also known as registers). */
   std::vector<std::bitset<DENSE_BUCKET_SIZE>> dense_bucket_;
 
@@ -90,6 +99,11 @@ class HyperLogLogPresto {
 
   /** @brief Storing cardinality value */
   uint64_t cardinality_;
+
+  int16_t n_leading_bits_;
+  size_t dense_bucket_size_;
+
+  std::mutex mutex_;
 
   // TODO(student) - can add more data structures as required
 };

@@ -11,12 +11,20 @@
 //===----------------------------------------------------------------------===//
 
 #include "primer/hyperloglog.h"
+#include <cmath>
+#include <cstdint>
+#include <mutex>
 
 namespace bustub {
 
 /** @brief Parameterized constructor. */
 template <typename KeyType>
-HyperLogLog<KeyType>::HyperLogLog(int16_t n_bits) : cardinality_(0) {}
+HyperLogLog<KeyType>::HyperLogLog(int16_t n_bits) : cardinality_(0), b_(n_bits) {
+  if (b_ >= 0) {
+    register_size_ = static_cast<size_t>(std::pow(2, n_bits));
+    register_.resize(register_size_, 0);
+  }
+}
 
 /**
  * @brief Function that computes binary.
@@ -26,8 +34,7 @@ HyperLogLog<KeyType>::HyperLogLog(int16_t n_bits) : cardinality_(0) {}
  */
 template <typename KeyType>
 auto HyperLogLog<KeyType>::ComputeBinary(const hash_t &hash) const -> std::bitset<BITSET_CAPACITY> {
-  /** @TODO(student) Implement this function! */
-  return {0};
+  return std::bitset<BITSET_CAPACITY>(hash);
 }
 
 /**
@@ -38,8 +45,14 @@ auto HyperLogLog<KeyType>::ComputeBinary(const hash_t &hash) const -> std::bitse
  */
 template <typename KeyType>
 auto HyperLogLog<KeyType>::PositionOfLeftmostOne(const std::bitset<BITSET_CAPACITY> &bset) const -> uint64_t {
-  /** @TODO(student) Implement this function! */
-  return 0;
+  uint64_t p = 0;
+  for (int i = bset.size() - 1 - b_; i >= 0; --i) {
+    ++p;
+    if (bset.test(i)) {
+      return p;
+    }
+  }
+  return p;
 }
 
 /**
@@ -49,7 +62,16 @@ auto HyperLogLog<KeyType>::PositionOfLeftmostOne(const std::bitset<BITSET_CAPACI
  */
 template <typename KeyType>
 auto HyperLogLog<KeyType>::AddElem(KeyType val) -> void {
-  /** @TODO(student) Implement this function! */
+  if (b_ < 0) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  hash_t hash = CalculateHash(val);
+  auto binary = ComputeBinary(hash);
+  uint64_t index = (binary >> (BITSET_CAPACITY - b_)).to_ulong();
+  register_[index] = std::max(register_[index], static_cast<int64_t>(PositionOfLeftmostOne(binary)));
 }
 
 /**
@@ -57,7 +79,18 @@ auto HyperLogLog<KeyType>::AddElem(KeyType val) -> void {
  */
 template <typename KeyType>
 auto HyperLogLog<KeyType>::ComputeCardinality() -> void {
-  /** @TODO(student) Implement this function! */
+  if (b_ < 0) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  double sum = 0;
+  for (size_t i = 0; i < register_size_; ++i) {
+    sum += std::pow(2, -(register_[i]));
+  }
+
+  cardinality_ = CONSTANT * register_size_ * register_size_ / sum;
 }
 
 template class HyperLogLog<int64_t>;
